@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════════
+  EXP-7: Phase-2 Compatibility Capture Probe
+  euid: 501
+  is_root: false
+  macOS: 26.3 (25D125)
+  duration: 8 sec
+  emit rate: 200 Hz
+  csv: /Users/shiyi/权限问题/results/phase2_compat_20260314_023020/short_run_2.csv
+═══════════════════════════════════════════════════════
+
+  IOHIDManagerOpen(None) = 0xe00002e2 ✗
+
+  accel (usage 3): FOUND transport=SPU
+  gyro (usage 9): FOUND transport=SPU
+  [emit] row #1 ts=309418082680125 ax=0.0018 ay=0.0081 az=-1.0066 gx=0.0000 gy=0.0000 gz=0.0000
+  [emit] row #2 ts=309418089933666 ax=0.0025 ay=0.0081 az=-1.0070 gx=0.0610 gy=0.0610 gz=-0.0610
+  [emit] row #3 ts=309418094937416 ax=0.0033 ay=0.0081 az=-1.0072 gx=0.2441 gy=0.0000 gz=-0.0610
+  [emit] row #4 ts=309418099637583 ax=0.0037 ay=0.0079 az=-1.0070 gx=0.2441 gy=0.0000 gz=-0.0610
+  [emit] row #5 ts=309418104543458 ax=0.0033 ay=0.0079 az=-1.0070 gx=0.4272 gy=0.0000 gz=-0.1831
+  [emit] row #6 ts=309418109634041 ax=0.0028 ay=0.0081 az=-1.0072 gx=0.4272 gy=0.0000 gz=0.0000
+  [emit] row #7 ts=309418114714375 ax=0.0029 ay=0.0083 az=-1.0070 gx=0.2441 gy=0.1221 gz=-0.0610
+  [emit] row #8 ts=309418119560166 ax=0.0035 ay=0.0081 az=-1.0069 gx=0.3052 gy=0.1221 gz=-0.0610
+  [emit] row #9 ts=309418124716833 ax=0.0037 ay=0.0075 az=-1.0073 gx=0.3662 gy=0.0000 gz=-0.0610
+  [emit] row #10 ts=309418129864708 ax=0.0033 ay=0.0071 az=-1.0077 gx=0.1831 gy=0.0610 gz=-0.1221
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  rows written:        1600
+  accel callbacks:     1600
+  gyro callbacks:      1600
+  measured duration:   7.997 sec
+  total row rate:      200.08 Hz
+  accel callback rate: 200.08 Hz
+  gyro callback rate:  200.08 Hz
+  csv schema:          timestamp_ns + 6-axis IMU
+═══════════════════════════════════════════════════════

@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════════
+  EXP-7: Phase-2 Compatibility Capture Probe
+  euid: 501
+  is_root: false
+  macOS: 26.3 (25D125)
+  duration: 3 sec
+  emit rate: 200 Hz
+  csv: evidence/nonroot_phase2_equivalent_stream_20260314/raw_results/exp7_smoke.csv
+═══════════════════════════════════════════════════════
+
+  IOHIDManagerOpen(None) = 0xe00002e2 ✗
+
+  accel (usage 3): FOUND transport=SPU
+  gyro (usage 9): FOUND transport=SPU
+  [emit] row #1 ts=310126125631125 ax=0.0000 ay=0.0000 az=0.0000 gx=0.1831 gy=-0.1831 gz=-0.1221
+  [emit] row #2 ts=310126133153583 ax=0.0044 ay=0.0072 az=-1.0054 gx=0.3052 gy=0.0000 gz=0.0000
+  [emit] row #3 ts=310126138132083 ax=0.0050 ay=0.0069 az=-1.0059 gx=0.2441 gy=0.0000 gz=-0.0610
+  [emit] row #4 ts=310126142987708 ax=0.0049 ay=0.0070 az=-1.0067 gx=0.4883 gy=0.0610 gz=-0.1221
+  [emit] row #5 ts=310126147974375 ax=0.0040 ay=0.0075 az=-1.0072 gx=0.2441 gy=0.0000 gz=-0.0610
+  [emit] row #6 ts=310126153072208 ax=0.0031 ay=0.0080 az=-1.0083 gx=0.3662 gy=0.0000 gz=-0.0610
+  [emit] row #7 ts=310126155694250 ax=0.0031 ay=0.0080 az=-1.0083 gx=0.2441 gy=0.1221 gz=-0.0610
+  [emit] row #8 ts=310126160634291 ax=0.0030 ay=0.0079 az=-1.0094 gx=0.3052 gy=0.0610 gz=-0.2441
+  [emit] row #9 ts=310126167718583 ax=0.0028 ay=0.0077 az=-1.0057 gx=0.5493 gy=0.0000 gz=-0.0610
+  [emit] row #10 ts=310126172849458 ax=0.0025 ay=0.0081 az=-1.0051 gx=0.4272 gy=0.0000 gz=-0.0610
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  rows written:        600
+  accel callbacks:     600
+  gyro callbacks:      600
+  measured duration:   2.996 sec
+  total row rate:      200.28 Hz
+  accel callback rate: 200.28 Hz
+  gyro callback rate:  200.28 Hz
+  csv schema:          timestamp_ns + 6-axis IMU
+═══════════════════════════════════════════════════════

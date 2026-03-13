@@ -1,0 +1,17 @@
+{
+  "csv": "/Users/shiyi/\u6743\u9650\u95ee\u9898/results/phase2_compat_20260314_023020/short_run_1.csv",
+  "rows": 1600,
+  "duration_sec": 7.995909667,
+  "effective_hz": 199.9772466914239,
+  "median_hz": 197.8793664060991,
+  "p10_hz": 193.8516836891061,
+  "p90_hz": 211.0112863606736,
+  "min_hz": 131.0107914899058,
+  "max_hz": 394.8472434726815,
+  "gate_190_pass": true,
+  "gate_150_pass": true,
+  "window_5s_min_hz": 120.0,
+  "window_5s_max_hz": 200.0,
+  "label": "short_run_1",
+  "exit_code": 0
+}

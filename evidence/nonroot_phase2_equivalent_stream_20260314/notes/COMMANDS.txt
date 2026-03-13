@@ -1,0 +1,10 @@
+Key commands used in this validation:
+
+1. Verify non-root direct read outside sandbox
+   /bin/zsh -lc 'cd /Users/shiyi/权限问题 && ./exp2_iokit_imu'
+
+2. Smoke-test the compatibility probe
+   /bin/zsh -lc 'cd /Users/shiyi/权限问题 && clang -o exp7_phase2_capture exp7_phase2_capture.c -framework IOKit -framework CoreFoundation -Wall -O2 && mkdir -p results/phase2_probe_smoke_v3 && ./exp7_phase2_capture --seconds 3 --emit-hz 200 --csv results/phase2_probe_smoke_v3/smoke.csv'
+
+3. Run the repeated compatibility audit
+   /bin/zsh -lc 'cd /Users/shiyi/权限问题 && python3 run_phase2_compatibility.py --short-runs 5 --short-seconds 8 --long-seconds 60'

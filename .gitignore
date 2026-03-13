@@ -1,5 +1,6 @@
 results/
 exp2_iokit_imu
 exp3_open_modes
+exp7_phase2_capture
 __pycache__/
 .DS_Store
