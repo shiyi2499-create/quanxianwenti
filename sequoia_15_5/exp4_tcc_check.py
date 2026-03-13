@@ -23,6 +23,7 @@ import os
 import json
 import sqlite3
 import subprocess
+import sys
 from datetime import datetime
 
 results = {
@@ -39,6 +40,9 @@ results = {
     "host_app_name": None,
     "client_candidates": [],
     "process_chain": [],
+    "runtime_context": {},
+    "process_lookup_errors": [],
+    "log_query_error": None,
     "recommendations": [],
 }
 
@@ -55,29 +59,69 @@ def collect_system_metadata():
     results["macos_build"] = run_cmd(["sw_vers", "-buildVersion"])
 
 
-def get_process_info(pid):
-    cmd = ["ps", "-o", "pid=", "-o", "ppid=", "-o", "comm=", "-p", str(pid)]
-    out = run_cmd(cmd)
-    if not out:
-        return None
-    parts = out.split(None, 2)
-    if len(parts) < 3:
-        return None
-    return {
-        "pid": int(parts[0]),
-        "ppid": int(parts[1]),
-        "command": parts[2].strip(),
+def collect_runtime_context():
+    results["runtime_context"] = {
+        "pid": os.getpid(),
+        "ppid": os.getppid(),
+        "sys_executable": sys.executable,
+        "argv": sys.argv,
+        "cwd": os.getcwd(),
+        "term_program": os.environ.get("TERM_PROGRAM"),
+        "shell": os.environ.get("SHELL"),
+        "bundle_identifier": os.environ.get("__CFBundleIdentifier"),
     }
+
+
+def load_process_table():
+    for field in ("command=", "args=", "comm="):
+        cmd = ["ps", "-axo", "pid=", "-o", "ppid=", "-o", field]
+        out = run_cmd(cmd)
+        if not out:
+            results["process_lookup_errors"].append(f"ps returned no output for field {field}")
+            continue
+
+        proc_map = {}
+        bad_lines = 0
+        for line in out.splitlines():
+            parts = line.strip().split(None, 2)
+            if len(parts) < 3:
+                bad_lines += 1
+                continue
+            try:
+                pid = int(parts[0])
+                ppid = int(parts[1])
+            except ValueError:
+                bad_lines += 1
+                continue
+            proc_map[pid] = {
+                "pid": pid,
+                "ppid": ppid,
+                "command": parts[2].strip(),
+                "source_field": field[:-1],
+            }
+
+        if proc_map:
+            if bad_lines:
+                results["process_lookup_errors"].append(
+                    f"ignored {bad_lines} malformed ps lines for field {field}"
+                )
+            return proc_map
+
+        results["process_lookup_errors"].append(f"ps parse yielded no rows for field {field}")
+
+    return {}
 
 
 def process_chain():
     chain = []
     seen = set()
+    proc_map = load_process_table()
     pid = os.getpid()
     while pid > 1 and pid not in seen:
         seen.add(pid)
-        info = get_process_info(pid)
+        info = proc_map.get(pid)
         if not info:
+            results["process_lookup_errors"].append(f"missing pid {pid} in process table walk")
             break
         chain.append(info)
         pid = info["ppid"]
@@ -175,8 +219,22 @@ def check_console_logs():
             "--last", "5m",
             "--style", "compact",
         ]
-        out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, timeout=10)
-        lines = out.decode("utf-8", errors="replace").strip().split("\n")
+        completed = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            check=False,
+        )
+        if completed.returncode != 0:
+            stderr_text = completed.stderr.decode("utf-8", errors="replace").strip()
+            results["log_query_error"] = {
+                "returncode": completed.returncode,
+                "stderr": stderr_text,
+            }
+            print(f"    Cannot read system log: returncode={completed.returncode} stderr={stderr_text or '(empty)'}")
+            return
+        lines = completed.stdout.decode("utf-8", errors="replace").strip().split("\n")
         hid_lines = [l for l in lines if "HID" in l.upper() or "SPU" in l.upper()]
         results["console_tcc_deny_lines"] = hid_lines[:20]  # cap at 20
         if hid_lines:
@@ -197,6 +255,7 @@ def main():
     print()
 
     collect_system_metadata()
+    collect_runtime_context()
     chain = process_chain()
     results["process_chain"] = chain
     results["client_candidates"] = collect_client_candidates(chain)
@@ -205,8 +264,18 @@ def main():
     print(f"  macOS: {results['macos_version'] or 'unknown'} ({results['macos_build'] or 'unknown'})")
     print(f"  Host app: {results['host_app_path'] or results['host_app_name'] or 'unknown'}")
     print(f"  TERM_PROGRAM: {os.environ.get('TERM_PROGRAM', 'not set')}")
+    print(f"  sys.executable: {results['runtime_context'].get('sys_executable') or 'unknown'}")
+    print(f"  pid/ppid: {results['runtime_context'].get('pid')} / {results['runtime_context'].get('ppid')}")
     if results["client_candidates"]:
         print(f"  Client candidates: {', '.join(results['client_candidates'][:8])}")
+    if chain:
+        print(f"  Process chain depth: {len(chain)}")
+    else:
+        print(f"  Process chain depth: 0")
+    if results["process_lookup_errors"]:
+        print(f"  Process lookup notes:")
+        for note in results["process_lookup_errors"][:5]:
+            print(f"    - {note}")
     print()
 
     # Step 2: Check TCC database

@@ -1,0 +1,70 @@
+  EXP-4: TCC Status Check
+  euid: 501
+
+  macOS: 15.5 (24F74)
+  Host app: unknown
+  TERM_PROGRAM: not set
+  sys.executable: /Library/Developer/CommandLineTools/usr/bin/python3
+  pid/ppid: 92572 / 90181
+  Process chain depth: 0
+  Process lookup notes:
+    - ps returned no output for field command=
+    - ps returned no output for field args=
+    - ps returned no output for field comm=
+    - missing pid 92572 in process table walk
+
+  --- TCC Database (Input Monitoring / kTCCServiceListenEvent) ---
+    Error reading /Users/shiyi/Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    Error reading /Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    ⚠ Cannot read TCC.db (need root or Full Disk Access)
+
+  --- Recent TCC Deny Logs (last 5 min) ---
+    Cannot read system log: returncode=64 stderr=log: Cannot run while sandboxed
+
+  --- Recommendations ---
+    ⚠ The current host app is not confirmed in TCC Input Monitoring records.
+    → Grant Codex or the actual host app in: System Settings > Privacy & Security > Input Monitoring
+    → Then re-run EXP-2 as non-root to test if TCC was the blocker.
+
+  Result JSON:
+{
+  "experiment": "EXP-4",
+  "timestamp": "2026-03-13T16:27:53.430969Z",
+  "euid": 501,
+  "is_root": false,
+  "macos_version": "15.5",
+  "macos_build": "24F74",
+  "tcc_db_readable": false,
+  "input_monitoring_entries": [],
+  "console_tcc_deny_lines": [],
+  "host_app_path": null,
+  "host_app_name": null,
+  "client_candidates": [],
+  "process_chain": [],
+  "runtime_context": {
+    "pid": 92572,
+    "ppid": 90181,
+    "sys_executable": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "argv": [
+      "exp4_tcc_check.py"
+    ],
+    "cwd": "/Users/shiyi/\u6743\u9650\u95ee\u9898",
+    "term_program": null,
+    "shell": "/bin/zsh",
+    "bundle_identifier": "com.openai.codex"
+  },
+  "process_lookup_errors": [
+    "ps returned no output for field command=",
+    "ps returned no output for field args=",
+    "ps returned no output for field comm=",
+    "missing pid 92572 in process table walk"
+  ],
+  "log_query_error": {
+    "returncode": 64,
+    "stderr": "log: Cannot run while sandboxed"
+  },
+  "recommendations": [
+    "Cannot read TCC.db. Run with sudo or grant Full Disk Access to Terminal.",
+    "Grant Codex or the actual host app Input Monitoring, then re-run EXP-2 non-root."
+  ]
+}

@@ -1,0 +1,103 @@
+  EXP-4: TCC Status Check
+  euid: 501
+
+  macOS: 15.5 (24F74)
+  Host app: /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app
+  TERM_PROGRAM: Apple_Terminal
+  sys.executable: /Library/Developer/CommandLineTools/usr/bin/python3
+  pid/ppid: 97453 / 97439
+  Client candidates: -zsh, /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app, /System/Applications/Utilities/Terminal.app, Apple_Terminal, Python, Python exp4_tcc_check.py, Terminal, login -pf shiyi
+  Process chain depth: 5
+
+  --- TCC Database (Input Monitoring / kTCCServiceListenEvent) ---
+    Error reading /Users/shiyi/Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    Error reading /Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    ⚠ Cannot read TCC.db (need root or Full Disk Access)
+
+  --- Recent TCC Deny Logs (last 5 min) ---
+    No TCC deny lines for HID/SPU in last 5 minutes
+
+  --- Recommendations ---
+    ⚠ The current host app is not confirmed in TCC Input Monitoring records.
+    → Grant Codex or the actual host app in: System Settings > Privacy & Security > Input Monitoring
+    → Then re-run EXP-2 as non-root to test if TCC was the blocker.
+
+  Result JSON:
+{
+  "experiment": "EXP-4",
+  "timestamp": "2026-03-13T17:24:21.921238Z",
+  "euid": 501,
+  "is_root": false,
+  "macos_version": "15.5",
+  "macos_build": "24F74",
+  "tcc_db_readable": false,
+  "input_monitoring_entries": [],
+  "console_tcc_deny_lines": [],
+  "host_app_path": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app",
+  "host_app_name": "Python",
+  "client_candidates": [
+    "-zsh",
+    "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app",
+    "/System/Applications/Utilities/Terminal.app",
+    "Apple_Terminal",
+    "Python",
+    "Python exp4_tcc_check.py",
+    "Terminal",
+    "login -pf shiyi",
+    "python",
+    "python exp4_tcc_check.py",
+    "run_terminal_hosted_A_group.sh 20260314_012348",
+    "run_terminal_hosted_a_group.sh 20260314_012348",
+    "terminal"
+  ],
+  "process_chain": [
+    {
+      "pid": 97453,
+      "ppid": 97439,
+      "command": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app/Contents/MacOS/Python exp4_tcc_check.py",
+      "source_field": "command"
+    },
+    {
+      "pid": 97439,
+      "ppid": 97428,
+      "command": "/bin/zsh ./run_terminal_hosted_A_group.sh 20260314_012348",
+      "source_field": "command"
+    },
+    {
+      "pid": 97428,
+      "ppid": 97421,
+      "command": "-zsh",
+      "source_field": "command"
+    },
+    {
+      "pid": 97421,
+      "ppid": 96910,
+      "command": "login -pf shiyi",
+      "source_field": "command"
+    },
+    {
+      "pid": 96910,
+      "ppid": 1,
+      "command": "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+      "source_field": "command"
+    }
+  ],
+  "runtime_context": {
+    "pid": 97453,
+    "ppid": 97439,
+    "sys_executable": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "argv": [
+      "exp4_tcc_check.py"
+    ],
+    "cwd": "/Users/shiyi/\u6743\u9650\u95ee\u9898/sequoia_15_5",
+    "term_program": "Apple_Terminal",
+    "shell": "/bin/zsh",
+    "bundle_identifier": "com.apple.Terminal"
+  },
+  "process_lookup_errors": [],
+  "log_query_error": null,
+  "recommendations": [
+    "Cannot read TCC.db. Run with sudo or grant Full Disk Access to Terminal.",
+    "Grant Codex or the actual host app Input Monitoring, then re-run EXP-2 non-root."
+  ]
+}

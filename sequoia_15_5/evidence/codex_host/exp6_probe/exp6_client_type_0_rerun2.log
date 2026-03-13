@@ -1,0 +1,9 @@
+═══════════════════════════════════════════════════════
+  EXP-6: IOHIDEventSystemClient Motion Probe
+  euid: 501
+  is_root: false
+  macOS: 15.5 (24F74)
+  forced client type: 0
+═══════════════════════════════════════════════════════
+
+  calling IOHIDEventSystemClientCreateWithType(0)

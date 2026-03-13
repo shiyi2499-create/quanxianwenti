@@ -1,0 +1,40 @@
+  WARN: IOHIDManagerOpen failed, continuing with direct service path
+═══════════════════════════════════════════════════════
+  EXP-2: Native C IOKit HID PoC
+  euid: 501
+  is_root: false
+  macOS: 15.5 (24F74)
+═══════════════════════════════════════════════════════
+
+  IOHIDManagerOpen(None) = 0xe00002e2 ✗
+
+  Accelerometer (usage 3): FOUND
+    transport=SPU product=(null)
+  Gyroscope     (usage 9): FOUND
+    transport=SPU product=(null)
+
+━━━ Phase A: kIOHIDOptionsTypeNone (non-exclusive) ━━━
+  Trying IOHIDDeviceOpen(accel, kIOHIDOptionsTypeNone)...
+  ✗ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = 0xe00002e2 (kIOReturnNotPermitted)
+  Trying IOHIDDeviceOpen(gyro, kIOHIDOptionsTypeNone)...
+  ✗ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = 0xe00002e2 (kIOReturnNotPermitted)
+
+━━━ Phase B: kIOHIDOptionsTypeSeizeDevice (exclusive) ━━━
+  Trying IOHIDDeviceOpen(accel, kIOHIDOptionsTypeSeizeDevice)...
+  ✗ IOHIDDeviceOpen(kIOHIDOptionsTypeSeizeDevice) = 0xe00002e2 (kIOReturnNotPermitted)
+
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  euid:                501
+  accel found:         yes
+  accel open(None):    0xe00002e2 FAIL
+  accel samples:       0
+  gyro found:          yes
+  gyro open(None):     0xe00002e2 FAIL
+  gyro samples:        0
+
+  ✗ Non-root read FAILED.
+    Check open_result codes above to determine cause.
+═══════════════════════════════════════════════════════

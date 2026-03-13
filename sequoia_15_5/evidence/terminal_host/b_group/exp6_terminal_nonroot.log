@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════════
+  EXP-6: IOHIDEventSystemClient Motion Probe
+  euid: 501
+  is_root: false
+  macOS: 15.5 (24F74)
+═══════════════════════════════════════════════════════
+
+  calling IOHIDEventSystemClientCreateSimpleClient()
+  createSimpleClient returned: non-NULL
+  client strategy simple                 -> services visible
+  Total HID event services visible: 143
+
+  [48] target=accel usage_page=0xff00 usage=3 transport=SPU product=(null) motionRestricted=no
+    interval request: Report=fail Sample=fail SensorReport=fail SensorSample=fail
+    known event type 13 (accel):
+      attempt 1: no event
+      attempt 2: no event
+      attempt 3: no event
+      attempt 4: no event
+      attempt 5: no event
+      attempt 6: no event
+    sweeping event types [0, 31]
+
+  [109] target=gyro usage_page=0xff00 usage=9 transport=SPU product=(null) motionRestricted=no
+    interval request: Report=fail Sample=fail SensorReport=fail SensorSample=fail
+    known event type 20 (gyro):
+      attempt 1: no event
+      attempt 2: no event
+      attempt 3: no event
+      attempt 4: no event
+      attempt 5: no event
+      attempt 6: no event
+    sweeping event types [0, 31]
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  matched SPU motion services: 2
+  known accel/gyro event reads: 0
+  generic sweep hits: 0
+  ✗ Event-system path produced no readable events in this probe.
+═══════════════════════════════════════════════════════

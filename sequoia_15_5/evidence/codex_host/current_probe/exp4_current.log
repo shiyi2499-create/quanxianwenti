@@ -1,0 +1,40 @@
+  EXP-4: TCC Status Check
+  euid: 501
+
+  macOS: 15.5 (24F74)
+  Host app: unknown
+  TERM_PROGRAM: not set
+
+  --- TCC Database (Input Monitoring / kTCCServiceListenEvent) ---
+    Error reading /Users/shiyi/Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    Error reading /Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    ⚠ Cannot read TCC.db (need root or Full Disk Access)
+
+  --- Recent TCC Deny Logs (last 5 min) ---
+    Cannot read system log: Command '['log', 'show', '--predicate', 'subsystem == "com.apple.TCC" AND eventMessage CONTAINS[c] "deny"', '--last', '5m', '--style', 'compact']' returned non-zero exit status 64.
+
+  --- Recommendations ---
+    ⚠ The current host app is not confirmed in TCC Input Monitoring records.
+    → Grant Codex or the actual host app in: System Settings > Privacy & Security > Input Monitoring
+    → Then re-run EXP-2 as non-root to test if TCC was the blocker.
+
+  Result JSON:
+{
+  "experiment": "EXP-4",
+  "timestamp": "2026-03-13T15:33:53.152477Z",
+  "euid": 501,
+  "is_root": false,
+  "macos_version": "15.5",
+  "macos_build": "24F74",
+  "tcc_db_readable": false,
+  "input_monitoring_entries": [],
+  "console_tcc_deny_lines": [],
+  "host_app_path": null,
+  "host_app_name": null,
+  "client_candidates": [],
+  "process_chain": [],
+  "recommendations": [
+    "Cannot read TCC.db. Run with sudo or grant Full Disk Access to Terminal.",
+    "Grant Codex or the actual host app Input Monitoring, then re-run EXP-2 non-root."
+  ]
+}

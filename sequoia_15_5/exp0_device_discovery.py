@@ -234,6 +234,7 @@ def main():
         "euid": os.geteuid(),
         "is_root": os.geteuid() == 0,
         "system": get_system_metadata(),
+        "manager_open_result": None,
         "devices_found": [],
         "service_devices_found": [],
         "spu_accel_found": False,
@@ -266,60 +267,57 @@ def main():
 
     # Open manager with kIOHIDOptionsTypeNone (0) — enumerate only
     ret = iokit.IOHIDManagerOpen(manager, 0)
+    results["manager_open_result"] = f"0x{ret & 0xFFFFFFFF:08x}"
     print(f"  IOHIDManagerOpen(kIOHIDOptionsTypeNone) returned: 0x{ret & 0xFFFFFFFF:08x}")
+    device_set = None
     if ret != 0:
-        print(f"  FAIL: IOHIDManagerOpen returned error 0x{ret & 0xFFFFFFFF:08x}")
-        results["verdict"] = f"FAIL_MANAGER_OPEN_0x{ret & 0xFFFFFFFF:08x}"
-        print(json.dumps(results, indent=2))
-        return
+        print(f"  WARN: IOHIDManagerOpen returned error 0x{ret & 0xFFFFFFFF:08x}")
+        print("  Continuing with direct AppleSPUHIDDevice service enumeration")
+    else:
+        # Get matched devices
+        device_set = iokit.IOHIDManagerCopyDevices(manager)
+        if not device_set:
+            print("  NO DEVICES on usage page 0xFF00 via IOHIDManager")
+        else:
+            count = cf.CFSetGetCount(device_set)
+            print(f"  Found {count} device(s) on usage page 0xFF00")
 
-    # Get matched devices
-    device_set = iokit.IOHIDManagerCopyDevices(manager)
-    if not device_set:
-        print("  NO DEVICES on usage page 0xFF00")
-        results["verdict"] = "NO_DEVICES_FOUND"
-        print(json.dumps(results, indent=2))
-        return
+            devices = (ctypes.c_void_p * count)()
+            cf.CFSetGetValues(device_set, devices)
 
-    count = cf.CFSetGetCount(device_set)
-    print(f"  Found {count} device(s) on usage page 0xFF00")
+            for i in range(count):
+                dev = devices[i]
+                usage_page, usage_page_key = get_first_int_property(
+                    dev, ["PrimaryUsagePage", "DeviceUsagePage"]
+                )
+                usage, usage_key = get_first_int_property(dev, ["PrimaryUsage", "DeviceUsage"])
+                product, product_key = get_first_str_property(dev, ["Product"])
+                transport, transport_key = get_first_str_property(dev, ["Transport"])
 
-    devices = (ctypes.c_void_p * count)()
-    cf.CFSetGetValues(device_set, devices)
+                info = {
+                    "index": i,
+                    "usage_page": f"0x{usage_page:04x}" if usage_page is not None else None,
+                    "usage": usage,
+                    "product": product,
+                    "transport": transport,
+                    "usage_page_key": usage_page_key,
+                    "usage_key": usage_key,
+                    "product_key": product_key,
+                    "transport_key": transport_key,
+                }
+                results["devices_found"].append(info)
 
-    for i in range(count):
-        dev = devices[i]
-        usage_page, usage_page_key = get_first_int_property(
-            dev, ["PrimaryUsagePage", "DeviceUsagePage"]
-        )
-        usage, usage_key = get_first_int_property(dev, ["PrimaryUsage", "DeviceUsage"])
-        product, product_key = get_first_str_property(dev, ["Product"])
-        transport, transport_key = get_first_str_property(dev, ["Transport"])
+                label = ""
+                if usage_page == 0xFF00:
+                    if usage == 3:
+                        label = " ← ACCELEROMETER"
+                        results["spu_accel_found"] = True
+                    elif usage == 9:
+                        label = " ← GYROSCOPE"
+                        results["spu_gyro_found"] = True
 
-        info = {
-            "index": i,
-            "usage_page": f"0x{usage_page:04x}" if usage_page is not None else None,
-            "usage": usage,
-            "product": product,
-            "transport": transport,
-            "usage_page_key": usage_page_key,
-            "usage_key": usage_key,
-            "product_key": product_key,
-            "transport_key": transport_key,
-        }
-        results["devices_found"].append(info)
-
-        label = ""
-        if usage_page == 0xFF00:
-            if usage == 3:
-                label = " ← ACCELEROMETER"
-                results["spu_accel_found"] = True
-            elif usage == 9:
-                label = " ← GYROSCOPE"
-                results["spu_gyro_found"] = True
-
-        print(f"    [{i}] page={info['usage_page']} usage={usage} "
-              f"product='{product}' transport='{transport}'{label}")
+                print(f"    [{i}] page={info['usage_page']} usage={usage} "
+                      f"product='{product}' transport='{transport}'{label}")
 
     service_devices = enumerate_spu_services()
     results["service_devices_found"] = service_devices
@@ -348,7 +346,8 @@ def main():
         print("\n  ✗ NO SPU DEVICE FOUND on 0xFF00")
 
     iokit.IOHIDManagerClose(manager, 0)
-    cf.CFRelease(device_set)
+    if device_set:
+        cf.CFRelease(device_set)
     cf.CFRelease(match_dict)
     cf.CFRelease(page_key)
     cf.CFRelease(page_val)
