@@ -11,10 +11,10 @@ EXP-0: IOKit Device Discovery (Zero Privilege)
 """
 
 import os
-import sys
 import json
 import ctypes
 import ctypes.util
+import subprocess
 from datetime import datetime
 
 # ── Load frameworks via ctypes ──────────────────────────────────
@@ -76,16 +76,39 @@ iokit.IOHIDManagerClose.argtypes = [IOHIDManagerRef, ctypes.c_uint32]
 # IOHIDDevice property
 iokit.IOHIDDeviceGetProperty.restype = CFTypeRef
 iokit.IOHIDDeviceGetProperty.argtypes = [ctypes.c_void_p, CFStringRef]
+iokit.IOServiceMatching.restype = ctypes.c_void_p
+iokit.IOServiceMatching.argtypes = [ctypes.c_char_p]
+iokit.IOServiceGetMatchingServices.restype = ctypes.c_int
+iokit.IOServiceGetMatchingServices.argtypes = [
+    ctypes.c_uint, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)
+]
+iokit.IOIteratorNext.restype = ctypes.c_uint
+iokit.IOIteratorNext.argtypes = [ctypes.c_uint]
+iokit.IOObjectRelease.restype = ctypes.c_int
+iokit.IOObjectRelease.argtypes = [ctypes.c_uint]
+iokit.IORegistryEntryCreateCFProperty.restype = ctypes.c_void_p
+iokit.IORegistryEntryCreateCFProperty.argtypes = [
+    ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint
+]
 
 cf.CFNumberGetValue.restype = ctypes.c_bool
 cf.CFNumberGetValue.argtypes = [CFNumberRef, ctypes.c_int, ctypes.c_void_p]
 
 cf.CFStringGetCString.restype = ctypes.c_bool
 cf.CFStringGetCString.argtypes = [CFStringRef, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
+cf.CFGetTypeID.restype = ctypes.c_ulong
+cf.CFGetTypeID.argtypes = [ctypes.c_void_p]
+cf.CFStringGetTypeID.restype = ctypes.c_ulong
+cf.CFStringGetTypeID.argtypes = []
+cf.CFNumberGetTypeID.restype = ctypes.c_ulong
+cf.CFNumberGetTypeID.argtypes = []
+
+CF_UTF8 = 0x08000100
+CF_SINT64 = 4
 
 
 def cfstr(s: str) -> CFStringRef:
-    return cf.CFStringCreateWithCString(kCFAllocatorDefault, s.encode(), 0x08000100)
+    return cf.CFStringCreateWithCString(kCFAllocatorDefault, s.encode(), CF_UTF8)
 
 
 def cfnum(val: int) -> CFNumberRef:
@@ -112,9 +135,91 @@ def get_device_str_property(device, key_str):
     if not prop:
         return None
     buf = ctypes.create_string_buffer(256)
-    if cf.CFStringGetCString(prop, buf, 256, 0x08000100):
+    if cf.CFStringGetCString(prop, buf, 256, CF_UTF8):
         return buf.value.decode("utf-8", errors="replace")
     return None
+
+
+def get_first_int_property(device, keys):
+    for key in keys:
+        value = get_device_int_property(device, key)
+        if value is not None:
+            return value, key
+    return None, None
+
+
+def get_first_str_property(device, keys):
+    for key in keys:
+        value = get_device_str_property(device, key)
+        if value:
+            return value, key
+    return None, None
+
+
+def get_registry_property(service, key_str):
+    key = cfstr(key_str)
+    ref = iokit.IORegistryEntryCreateCFProperty(service, key, None, 0)
+    cf.CFRelease(key)
+    if not ref:
+        return None
+
+    try:
+        type_id = cf.CFGetTypeID(ref)
+        if type_id == cf.CFStringGetTypeID():
+            buf = ctypes.create_string_buffer(256)
+            if cf.CFStringGetCString(ref, buf, 256, CF_UTF8):
+                return buf.value.decode("utf-8", errors="replace")
+            return None
+        if type_id == cf.CFNumberGetTypeID():
+            value = ctypes.c_long()
+            if cf.CFNumberGetValue(ref, CF_SINT64, ctypes.byref(value)):
+                return value.value
+            return None
+        return None
+    finally:
+        cf.CFRelease(ref)
+
+
+def enumerate_spu_services():
+    matching = iokit.IOServiceMatching(b"AppleSPUHIDDevice")
+    iterator = ctypes.c_uint()
+    kr = iokit.IOServiceGetMatchingServices(0, matching, ctypes.byref(iterator))
+    if kr != 0:
+        return []
+
+    services = []
+    while True:
+        service = iokit.IOIteratorNext(iterator.value)
+        if not service:
+            break
+        info = {
+            "primary_usage_page": get_registry_property(service, "PrimaryUsagePage"),
+            "primary_usage": get_registry_property(service, "PrimaryUsage"),
+            "product": get_registry_property(service, "Product"),
+            "transport": get_registry_property(service, "Transport"),
+            "vendor_id": get_registry_property(service, "VendorID"),
+            "product_id": get_registry_property(service, "ProductID"),
+            "manufacturer": get_registry_property(service, "Manufacturer"),
+            "serial_number": get_registry_property(service, "SerialNumber"),
+        }
+        services.append(info)
+        iokit.IOObjectRelease(service)
+
+    iokit.IOObjectRelease(iterator.value)
+    return services
+
+
+def get_system_metadata():
+    def run_cmd(args):
+        try:
+            return subprocess.check_output(args, stderr=subprocess.DEVNULL).decode().strip()
+        except Exception:
+            return None
+
+    return {
+        "macos_version": run_cmd(["sw_vers", "-productVersion"]),
+        "macos_build": run_cmd(["sw_vers", "-buildVersion"]),
+    }
 
 
 def main():
@@ -128,7 +233,9 @@ def main():
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "euid": os.geteuid(),
         "is_root": os.geteuid() == 0,
+        "system": get_system_metadata(),
         "devices_found": [],
+        "service_devices_found": [],
         "spu_accel_found": False,
         "spu_gyro_found": False,
         "verdict": "PENDING",
@@ -182,10 +289,12 @@ def main():
 
     for i in range(count):
         dev = devices[i]
-        usage_page = get_device_int_property(dev, "DeviceUsagePage")
-        usage = get_device_int_property(dev, "DeviceUsage")
-        product = get_device_str_property(dev, "Product")
-        transport = get_device_str_property(dev, "Transport")
+        usage_page, usage_page_key = get_first_int_property(
+            dev, ["PrimaryUsagePage", "DeviceUsagePage"]
+        )
+        usage, usage_key = get_first_int_property(dev, ["PrimaryUsage", "DeviceUsage"])
+        product, product_key = get_first_str_property(dev, ["Product"])
+        transport, transport_key = get_first_str_property(dev, ["Transport"])
 
         info = {
             "index": i,
@@ -193,6 +302,10 @@ def main():
             "usage": usage,
             "product": product,
             "transport": transport,
+            "usage_page_key": usage_page_key,
+            "usage_key": usage_key,
+            "product_key": product_key,
+            "transport_key": transport_key,
         }
         results["devices_found"].append(info)
 
@@ -207,6 +320,24 @@ def main():
 
         print(f"    [{i}] page={info['usage_page']} usage={usage} "
               f"product='{product}' transport='{transport}'{label}")
+
+    service_devices = enumerate_spu_services()
+    results["service_devices_found"] = service_devices
+    if service_devices:
+        print("\n  Service-level AppleSPUHIDDevice enumeration:")
+        for idx, service in enumerate(service_devices):
+            page = service.get("primary_usage_page")
+            usage = service.get("primary_usage")
+            if page == 0xFF00 and usage == 3:
+                results["spu_accel_found"] = True
+            elif page == 0xFF00 and usage == 9:
+                results["spu_gyro_found"] = True
+
+            page_repr = f"0x{page:04x}" if isinstance(page, int) else None
+            print(
+                f"    [svc {idx}] page={page_repr} usage={usage} "
+                f"product='{service.get('product')}' transport='{service.get('transport')}'"
+            )
 
     if results["spu_accel_found"] or results["spu_gyro_found"]:
         results["verdict"] = "SUCCESS_SPU_DISCOVERED"

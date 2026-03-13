@@ -20,45 +20,102 @@ macOS TCC 可能在 IOHIDDeviceOpen 时拦截非 root 访问（即使设备不�
 """
 
 import os
-import sys
 import json
 import sqlite3
 import subprocess
 from datetime import datetime
-from pathlib import Path
 
 results = {
     "experiment": "EXP-4",
     "timestamp": datetime.utcnow().isoformat() + "Z",
     "euid": os.geteuid(),
     "is_root": os.geteuid() == 0,
+    "macos_version": None,
+    "macos_build": None,
     "tcc_db_readable": False,
     "input_monitoring_entries": [],
     "console_tcc_deny_lines": [],
-    "terminal_app_path": None,
+    "host_app_path": None,
+    "host_app_name": None,
+    "client_candidates": [],
+    "process_chain": [],
     "recommendations": [],
 }
 
 
-def find_terminal_app():
-    """Find the current terminal application path."""
-    # Check common terminal apps
-    candidates = [
-        "/Applications/Utilities/Terminal.app",
-        "/Applications/iTerm.app",
-        "/Applications/Alacritty.app",
-        "/Applications/kitty.app",
-        "/Applications/Warp.app",
-    ]
-    # Also check TERM_PROGRAM env
-    term = os.environ.get("TERM_PROGRAM", "")
-    if term:
-        results["terminal_app_path"] = term
+def run_cmd(args):
+    try:
+        return subprocess.check_output(args, stderr=subprocess.DEVNULL, timeout=5).decode().strip()
+    except Exception:
+        return None
 
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return None
+
+def collect_system_metadata():
+    results["macos_version"] = run_cmd(["sw_vers", "-productVersion"])
+    results["macos_build"] = run_cmd(["sw_vers", "-buildVersion"])
+
+
+def get_process_info(pid):
+    cmd = ["ps", "-o", "pid=", "-o", "ppid=", "-o", "comm=", "-p", str(pid)]
+    out = run_cmd(cmd)
+    if not out:
+        return None
+    parts = out.split(None, 2)
+    if len(parts) < 3:
+        return None
+    return {
+        "pid": int(parts[0]),
+        "ppid": int(parts[1]),
+        "command": parts[2].strip(),
+    }
+
+
+def process_chain():
+    chain = []
+    seen = set()
+    pid = os.getpid()
+    while pid > 1 and pid not in seen:
+        seen.add(pid)
+        info = get_process_info(pid)
+        if not info:
+            break
+        chain.append(info)
+        pid = info["ppid"]
+    return chain
+
+
+def app_path_from_command(command):
+    marker = ".app/Contents/"
+    if marker not in command:
+        return None
+    idx = command.find(marker)
+    return command[: idx + 4]
+
+
+def collect_client_candidates(chain):
+    candidates = set()
+
+    term_program = os.environ.get("TERM_PROGRAM", "")
+    if term_program:
+        candidates.add(term_program)
+
+    for entry in chain:
+        command = entry["command"]
+        app_path = app_path_from_command(command)
+        if app_path:
+            app_name = os.path.basename(app_path).replace(".app", "")
+            candidates.add(app_name)
+            candidates.add(app_name.lower())
+            candidates.add(app_path)
+            if results["host_app_path"] is None:
+                results["host_app_path"] = app_path
+                results["host_app_name"] = app_name
+        base = os.path.basename(command)
+        if base:
+            candidates.add(base)
+            candidates.add(base.lower())
+
+    return sorted(candidates)
 
 
 def check_tcc_db():
@@ -139,10 +196,17 @@ def main():
     print(f"  euid: {os.geteuid()}")
     print()
 
-    # Step 1: Find terminal app
-    term_app = find_terminal_app()
-    print(f"  Terminal app: {term_app or 'unknown'}")
+    collect_system_metadata()
+    chain = process_chain()
+    results["process_chain"] = chain
+    results["client_candidates"] = collect_client_candidates(chain)
+
+    # Step 1: Find likely host app / process context
+    print(f"  macOS: {results['macos_version'] or 'unknown'} ({results['macos_build'] or 'unknown'})")
+    print(f"  Host app: {results['host_app_path'] or results['host_app_name'] or 'unknown'}")
     print(f"  TERM_PROGRAM: {os.environ.get('TERM_PROGRAM', 'not set')}")
+    if results["client_candidates"]:
+        print(f"  Client candidates: {', '.join(results['client_candidates'][:8])}")
     print()
 
     # Step 2: Check TCC database
@@ -161,22 +225,23 @@ def main():
 
     # Step 4: Recommendations
     print(f"  --- Recommendations ---")
-    has_terminal_permission = any(
-        e.get("auth_value") == 2 and "terminal" in e.get("client", "").lower()
+    candidate_tokens = {c.lower() for c in results["client_candidates"] if c}
+    has_host_permission = any(
+        e.get("auth_value") == 2 and any(token in e.get("client", "").lower() for token in candidate_tokens)
         for e in results["input_monitoring_entries"]
     )
-    if has_terminal_permission:
-        print(f"    ✓ Terminal has Input Monitoring permission.")
+    if has_host_permission:
+        print(f"    ✓ The current host app appears to have Input Monitoring permission.")
         print(f"    → If EXP-2 still fails as non-root, the restriction is kernel-level.")
         results["recommendations"].append(
-            "Terminal has Input Monitoring. If EXP-2 fails non-root, restriction is kernel-level."
+            "Current host app has Input Monitoring. If EXP-2 still fails non-root, restriction is kernel-level."
         )
     else:
-        print(f"    ⚠ Terminal does NOT have Input Monitoring permission.")
-        print(f"    → Grant it in: System Settings > Privacy & Security > Input Monitoring")
+        print(f"    ⚠ The current host app is not confirmed in TCC Input Monitoring records.")
+        print(f"    → Grant Codex or the actual host app in: System Settings > Privacy & Security > Input Monitoring")
         print(f"    → Then re-run EXP-2 as non-root to test if TCC was the blocker.")
         results["recommendations"].append(
-            "Grant Terminal Input Monitoring, then re-run EXP-2 non-root."
+            "Grant Codex or the actual host app Input Monitoring, then re-run EXP-2 non-root."
         )
 
     print(f"\n  Result JSON:")

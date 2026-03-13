@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <IOKit/IOKitLib.h>
 #include <IOKit/hid/IOHIDManager.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -32,27 +33,126 @@ typedef struct {
     IOReturn result;
 } OpenTest;
 
+typedef struct {
+    io_service_t service;
+    IOHIDDeviceRef device;
+    int usage_page;
+    int usage;
+    char transport[128];
+} ServiceMatch;
+
+static void print_macos_metadata(void) {
+    FILE *fp = popen("sw_vers -productVersion", "r");
+    char version[64] = "unknown";
+    char build[64] = "unknown";
+
+    if (fp) {
+        if (fgets(version, sizeof(version), fp)) {
+            version[strcspn(version, "\n")] = '\0';
+        }
+        pclose(fp);
+    }
+
+    fp = popen("sw_vers -buildVersion", "r");
+    if (fp) {
+        if (fgets(build, sizeof(build), fp)) {
+            build[strcspn(build, "\n")] = '\0';
+        }
+        pclose(fp);
+    }
+
+    printf("  macOS: %s (%s)\n", version, build);
+}
+
+static int get_registry_int_property(io_registry_entry_t service, CFStringRef key) {
+    int32_t value = 0;
+    CFTypeRef ref = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0);
+    if (!ref) return -1;
+    if (CFGetTypeID(ref) == CFNumberGetTypeID() &&
+        CFNumberGetValue((CFNumberRef)ref, kCFNumberSInt32Type, &value)) {
+        CFRelease(ref);
+        return value;
+    }
+    CFRelease(ref);
+    return -1;
+}
+
+static void get_registry_string_property(
+    io_registry_entry_t service,
+    CFStringRef key,
+    char *out,
+    size_t out_len
+) {
+    CFTypeRef ref = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0);
+    if (!ref) return;
+    if (CFGetTypeID(ref) == CFStringGetTypeID()) {
+        CFStringGetCString((CFStringRef)ref, out, out_len, kCFStringEncodingUTF8);
+    }
+    CFRelease(ref);
+}
+
+static void wake_spu_drivers(void) {
+    io_iterator_t iter = IO_OBJECT_NULL;
+    if (IOServiceGetMatchingServices(
+            kIOMainPortDefault,
+            IOServiceMatching("AppleSPUHIDDriver"),
+            &iter) != KERN_SUCCESS) {
+        return;
+    }
+
+    io_service_t service;
+    while ((service = IOIteratorNext(iter)) != IO_OBJECT_NULL) {
+        int32_t enabled = 1;
+        int32_t interval = 5000;
+        CFNumberRef enabled_num = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &enabled);
+        CFNumberRef interval_num = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &interval);
+        IORegistryEntrySetCFProperty(service, CFSTR("SensorPropertyReportingState"), enabled_num);
+        IORegistryEntrySetCFProperty(service, CFSTR("SensorPropertyPowerState"), enabled_num);
+        IORegistryEntrySetCFProperty(service, CFSTR("ReportInterval"), interval_num);
+        CFRelease(enabled_num);
+        CFRelease(interval_num);
+        IOObjectRelease(service);
+    }
+    IOObjectRelease(iter);
+}
+
+static ServiceMatch find_spu_device_for_usage(int usage) {
+    ServiceMatch match = {0};
+    io_iterator_t iter = IO_OBJECT_NULL;
+    if (IOServiceGetMatchingServices(
+            kIOMainPortDefault,
+            IOServiceMatching("AppleSPUHIDDevice"),
+            &iter) != KERN_SUCCESS) {
+        return match;
+    }
+
+    io_service_t service;
+    while ((service = IOIteratorNext(iter)) != IO_OBJECT_NULL) {
+        int up = get_registry_int_property(service, CFSTR("PrimaryUsagePage"));
+        int u = get_registry_int_property(service, CFSTR("PrimaryUsage"));
+        if (up == 0xFF00 && u == usage) {
+            match.service = service;
+            match.device = IOHIDDeviceCreate(kCFAllocatorDefault, service);
+            match.usage_page = up;
+            match.usage = u;
+            get_registry_string_property(service, CFSTR("Transport"),
+                                         match.transport, sizeof(match.transport));
+            break;
+        }
+        IOObjectRelease(service);
+    }
+
+    IOObjectRelease(iter);
+    return match;
+}
+
 int main(void) {
     printf("═══════════════════════════════════════════════════════\n");
     printf("  EXP-3: IOHIDDeviceOpen Mode Comparison\n");
     printf("  euid: %d | is_root: %s\n", geteuid(), geteuid() == 0 ? "yes" : "no");
+    print_macos_metadata();
     printf("═══════════════════════════════════════════════════════\n\n");
-
-    IOHIDManagerRef mgr = IOHIDManagerCreate(kCFAllocatorDefault, 0);
-    CFMutableDictionaryRef match = CFDictionaryCreateMutable(
-        kCFAllocatorDefault, 1,
-        &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    int32_t page = 0xFF00;
-    CFNumberRef pn = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &page);
-    CFDictionarySetValue(match, CFSTR(kIOHIDDeviceUsagePageKey), pn);
-    IOHIDManagerSetDeviceMatching(mgr, match);
-    IOHIDManagerOpen(mgr, kIOHIDOptionsTypeNone);
-
-    CFSetRef devs = IOHIDManagerCopyDevices(mgr);
-    if (!devs || CFSetGetCount(devs) == 0) {
-        printf("  No devices on 0xFF00. Aborting.\n");
-        return 1;
-    }
+    wake_spu_drivers();
 
     /* Test each usage (3=accel, 9=gyro) × each open mode */
     int usages[] = {3, 9};
@@ -62,39 +162,29 @@ int main(void) {
         {"kIOHIDOptionsTypeSeizeDevice",  kIOHIDOptionsTypeSeizeDevice, 0},
     };
 
-    CFIndex count = CFSetGetCount(devs);
-    const void **vals = calloc(count, sizeof(void*));
-    CFSetGetValues(devs, vals);
-
     printf("  %-8s  %-35s  %-12s  %s\n", "Sensor", "OpenMode", "IOReturn", "Result");
     printf("  %-8s  %-35s  %-12s  %s\n", "------", "--------", "--------", "------");
 
     for (int ui = 0; ui < 2; ui++) {
-        /* Find device with this usage */
-        IOHIDDeviceRef target = NULL;
-        for (CFIndex i = 0; i < count; i++) {
-            IOHIDDeviceRef d = (IOHIDDeviceRef)vals[i];
-            CFNumberRef uref = IOHIDDeviceGetProperty(d, CFSTR(kIOHIDDeviceUsageKey));
-            CFNumberRef upref = IOHIDDeviceGetProperty(d, CFSTR(kIOHIDDeviceUsagePageKey));
-            int32_t u = 0, up = 0;
-            if (uref) CFNumberGetValue(uref, kCFNumberSInt32Type, &u);
-            if (upref) CFNumberGetValue(upref, kCFNumberSInt32Type, &up);
-            if (up == 0xFF00 && u == usages[ui]) { target = d; break; }
-        }
-        if (!target) {
+        ServiceMatch match = find_spu_device_for_usage(usages[ui]);
+        if (!match.device) {
             printf("  %-8s  %-35s  %-12s  %s\n",
                    usage_names[ui], "N/A", "N/A", "NOT_FOUND");
             continue;
         }
 
+        printf("  %-8s  %-35s  %-12s  transport=%s\n",
+               usage_names[ui], "SERVICE_MATCH", "page=0xff00",
+               match.transport[0] ? match.transport : "(null)");
+
         for (int mi = 0; mi < 2; mi++) {
-            IOReturn ret = IOHIDDeviceOpen(target, modes[mi].options);
+            IOReturn ret = IOHIDDeviceOpen(match.device, modes[mi].options);
             modes[mi].result = ret;
 
             const char *status;
             if (ret == kIOReturnSuccess) {
                 status = "✓ SUCCESS";
-                IOHIDDeviceClose(target, 0);
+                IOHIDDeviceClose(match.device, 0);
             } else if (ret == (IOReturn)0xe00002e2) {
                 status = "✗ NOT_PERMITTED";
             } else if (ret == (IOReturn)0xe00002c5) {
@@ -106,6 +196,9 @@ int main(void) {
             printf("  %-8s  %-35s  0x%08x  %s\n",
                    usage_names[ui], modes[mi].mode_name, ret, status);
         }
+
+        CFRelease(match.device);
+        IOObjectRelease(match.service);
     }
 
     printf("\n  ─── INTERPRETATION ───\n");
@@ -117,11 +210,5 @@ int main(void) {
     printf("    → Root or entitlement required.\n");
     printf("  If both SUCCESS (non-root):\n");
     printf("    → Full unrestricted access. High severity finding.\n");
-
-    free(vals);
-    CFRelease(devs);
-    IOHIDManagerClose(mgr, 0);
-    CFRelease(match);
-    CFRelease(pn);
     return 0;
 }

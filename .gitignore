@@ -1,0 +1,5 @@
+results/
+exp2_iokit_imu
+exp3_open_modes
+__pycache__/
+.DS_Store

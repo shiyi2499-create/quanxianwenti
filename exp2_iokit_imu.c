@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/sysctl.h>
+#include <IOKit/IOKitLib.h>
 #include <IOKit/hid/IOHIDManager.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -38,6 +40,7 @@ static CFRunLoopRef g_run_loop = NULL;
 typedef struct {
     const char *name;       /* "accel" or "gyro" */
     int usage;              /* 3 or 9 */
+    io_service_t service;
     IOHIDDeviceRef device;
     int open_result;        /* IOReturn from Open */
     int callback_count;
@@ -45,11 +48,93 @@ typedef struct {
     double scale;
 } SensorCtx;
 
+typedef struct {
+    int usage_page;
+    int usage;
+    char product[128];
+    char transport[128];
+} ServiceInfo;
+
 /* ── Signal handler ───────────────────────────────────────────── */
 static void sig_handler(int sig) {
     (void)sig;
     g_running = 0;
     if (g_run_loop) CFRunLoopStop(g_run_loop);
+}
+
+static void print_macos_metadata(void) {
+    FILE *fp = popen("sw_vers -productVersion", "r");
+    char version[64] = "unknown";
+    char build[64] = "unknown";
+
+    if (fp) {
+        if (fgets(version, sizeof(version), fp)) {
+            version[strcspn(version, "\n")] = '\0';
+        }
+        pclose(fp);
+    }
+
+    fp = popen("sw_vers -buildVersion", "r");
+    if (fp) {
+        if (fgets(build, sizeof(build), fp)) {
+            build[strcspn(build, "\n")] = '\0';
+        }
+        pclose(fp);
+    }
+
+    printf("  macOS: %s (%s)\n", version, build);
+}
+
+static int get_registry_int_property(io_registry_entry_t service, CFStringRef key) {
+    int32_t value = 0;
+    CFTypeRef ref = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0);
+    if (!ref) return -1;
+    if (CFGetTypeID(ref) == CFNumberGetTypeID() &&
+        CFNumberGetValue((CFNumberRef)ref, kCFNumberSInt32Type, &value)) {
+        CFRelease(ref);
+        return value;
+    }
+    CFRelease(ref);
+    return -1;
+}
+
+static void get_registry_string_property(
+    io_registry_entry_t service,
+    CFStringRef key,
+    char *out,
+    size_t out_len
+) {
+    CFTypeRef ref = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0);
+    if (!ref) return;
+    if (CFGetTypeID(ref) == CFStringGetTypeID()) {
+        CFStringGetCString((CFStringRef)ref, out, out_len, kCFStringEncodingUTF8);
+    }
+    CFRelease(ref);
+}
+
+static void wake_spu_drivers(void) {
+    io_iterator_t iter = IO_OBJECT_NULL;
+    kern_return_t kr = IOServiceGetMatchingServices(
+        kIOMainPortDefault,
+        IOServiceMatching("AppleSPUHIDDriver"),
+        &iter
+    );
+    if (kr != KERN_SUCCESS) return;
+
+    io_service_t service;
+    while ((service = IOIteratorNext(iter)) != IO_OBJECT_NULL) {
+        int32_t enabled = 1;
+        int32_t interval = 5000;
+        CFNumberRef enabled_num = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &enabled);
+        CFNumberRef interval_num = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &interval);
+        IORegistryEntrySetCFProperty(service, CFSTR("SensorPropertyReportingState"), enabled_num);
+        IORegistryEntrySetCFProperty(service, CFSTR("SensorPropertyPowerState"), enabled_num);
+        IORegistryEntrySetCFProperty(service, CFSTR("ReportInterval"), interval_num);
+        CFRelease(enabled_num);
+        CFRelease(interval_num);
+        IOObjectRelease(service);
+    }
+    IOObjectRelease(iter);
 }
 
 /* ── HID input report callback ────────────────────────────────── */
@@ -98,39 +183,38 @@ static void input_callback(
     }
 }
 
-/* ── Find and open SPU sensor device ──────────────────────────── */
-static IOHIDDeviceRef find_spu_device(IOHIDManagerRef manager, int usage) {
-    CFSetRef devices = IOHIDManagerCopyDevices(manager);
-    if (!devices) return NULL;
+/* ── Find SPU sensor service using registry properties ────────── */
+static io_service_t find_spu_service(int usage, ServiceInfo *info_out) {
+    io_iterator_t iter = IO_OBJECT_NULL;
+    kern_return_t kr = IOServiceGetMatchingServices(
+        kIOMainPortDefault,
+        IOServiceMatching("AppleSPUHIDDevice"),
+        &iter
+    );
+    if (kr != KERN_SUCCESS) return IO_OBJECT_NULL;
 
-    CFIndex count = CFSetGetCount(devices);
-    if (count == 0) { CFRelease(devices); return NULL; }
-
-    const void **values = calloc(count, sizeof(void *));
-    CFSetGetValues(devices, values);
-
-    IOHIDDeviceRef found = NULL;
-    for (CFIndex i = 0; i < count; i++) {
-        IOHIDDeviceRef dev = (IOHIDDeviceRef)values[i];
-
-        CFNumberRef upRef = IOHIDDeviceGetProperty(dev,
-            CFSTR(kIOHIDDeviceUsagePageKey));
-        CFNumberRef uRef = IOHIDDeviceGetProperty(dev,
-            CFSTR(kIOHIDDeviceUsageKey));
-
-        int32_t up = 0, u = 0;
-        if (upRef) CFNumberGetValue(upRef, kCFNumberSInt32Type, &up);
-        if (uRef)  CFNumberGetValue(uRef, kCFNumberSInt32Type, &u);
-
+    io_service_t found = IO_OBJECT_NULL;
+    io_service_t service;
+    while ((service = IOIteratorNext(iter)) != IO_OBJECT_NULL) {
+        int up = get_registry_int_property(service, CFSTR("PrimaryUsagePage"));
+        int u = get_registry_int_property(service, CFSTR("PrimaryUsage"));
         if (up == 0xFF00 && u == usage) {
-            found = dev;
-            CFRetain(found);
+            if (info_out) {
+                memset(info_out, 0, sizeof(*info_out));
+                info_out->usage_page = up;
+                info_out->usage = u;
+                get_registry_string_property(service, CFSTR("Product"),
+                                             info_out->product, sizeof(info_out->product));
+                get_registry_string_property(service, CFSTR("Transport"),
+                                             info_out->transport, sizeof(info_out->transport));
+            }
+            found = service;
             break;
         }
+        IOObjectRelease(service);
     }
 
-    free(values);
-    CFRelease(devices);
+    IOObjectRelease(iter);
     return found;
 }
 
@@ -172,6 +256,7 @@ int main(int argc, char *argv[]) {
     printf("  EXP-2: Native C IOKit HID PoC\n");
     printf("  euid: %d\n", geteuid());
     printf("  is_root: %s\n", geteuid() == 0 ? "true" : "false");
+    print_macos_metadata();
     printf("═══════════════════════════════════════════════════════\n\n");
 
     /* Create HID Manager */
@@ -193,24 +278,46 @@ int main(int argc, char *argv[]) {
     CFDictionarySetValue(match, CFSTR(kIOHIDDeviceUsagePageKey), pageNum);
     IOHIDManagerSetDeviceMatching(manager, match);
 
-    /* Open manager (enumerate only, kIOHIDOptionsTypeNone) */
+    /* Open manager for comparison only. On Tahoe this may be denied even if
+     * direct IOService + IOHIDDeviceOpen still works, so do not abort here. */
     IOReturn mr = IOHIDManagerOpen(manager, kIOHIDOptionsTypeNone);
     printf("  IOHIDManagerOpen(None) = 0x%08x %s\n\n",
            mr, mr == kIOReturnSuccess ? "✓" : "✗");
     if (mr != kIOReturnSuccess) {
-        fprintf(stderr, "  FAIL: IOHIDManagerOpen failed\n");
-        return 1;
+        fprintf(stderr, "  WARN: IOHIDManagerOpen failed, continuing with direct service path\n");
     }
+
+    wake_spu_drivers();
 
     /* Find accelerometer (usage 3) and gyroscope (usage 9) */
     SensorCtx accel = { .name = "accel", .usage = 3, .scale = 65536.0 };
     SensorCtx gyro  = { .name = "gyro",  .usage = 9, .scale = 65536.0 };
+    ServiceInfo accel_info = {0};
+    ServiceInfo gyro_info = {0};
 
-    accel.device = find_spu_device(manager, 3);
-    gyro.device  = find_spu_device(manager, 9);
+    accel.service = find_spu_service(3, &accel_info);
+    gyro.service = find_spu_service(9, &gyro_info);
+
+    if (accel.service) {
+        accel.device = IOHIDDeviceCreate(kCFAllocatorDefault, accel.service);
+    }
+    if (gyro.service) {
+        gyro.device = IOHIDDeviceCreate(kCFAllocatorDefault, gyro.service);
+    }
 
     printf("  Accelerometer (usage 3): %s\n", accel.device ? "FOUND" : "NOT FOUND");
-    printf("  Gyroscope     (usage 9): %s\n\n", gyro.device ? "FOUND" : "NOT FOUND");
+    if (accel.device) {
+        printf("    transport=%s product=%s\n",
+               accel_info.transport[0] ? accel_info.transport : "(null)",
+               accel_info.product[0] ? accel_info.product : "(null)");
+    }
+    printf("  Gyroscope     (usage 9): %s\n", gyro.device ? "FOUND" : "NOT FOUND");
+    if (gyro.device) {
+        printf("    transport=%s product=%s\n",
+               gyro_info.transport[0] ? gyro_info.transport : "(null)",
+               gyro_info.product[0] ? gyro_info.product : "(null)");
+    }
+    printf("\n");
 
     if (!accel.device && !gyro.device) {
         printf("  ✗ No SPU sensor found. Device may not be supported.\n");
@@ -301,6 +408,8 @@ int main(int argc, char *argv[]) {
     /* Cleanup */
     if (accel.device) { IOHIDDeviceClose(accel.device, 0); CFRelease(accel.device); }
     if (gyro.device)  { IOHIDDeviceClose(gyro.device, 0);  CFRelease(gyro.device); }
+    if (accel.service) IOObjectRelease(accel.service);
+    if (gyro.service)  IOObjectRelease(gyro.service);
     IOHIDManagerClose(manager, 0);
     CFRelease(match);
     CFRelease(pageNum);
