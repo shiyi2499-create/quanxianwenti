@@ -1,0 +1,70 @@
+  EXP-4: TCC Status Check
+  euid: 501
+
+  macOS: 26.3 (25D125)
+  Host app: /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app
+  TERM_PROGRAM: not set
+  Client candidates: /Applications/Codex.app, /Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app, Codex, Python, codex, python, zsh
+
+  --- TCC Database (Input Monitoring / kTCCServiceListenEvent) ---
+    Error reading /Users/shiyi/Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    Error reading /Library/Application Support/com.apple.TCC/TCC.db: authorization denied
+    ⚠ Cannot read TCC.db (need root or Full Disk Access)
+
+  --- Recent TCC Deny Logs (last 5 min) ---
+    No TCC deny lines for HID/SPU in last 5 minutes
+
+  --- Recommendations ---
+    ⚠ The current host app is not confirmed in TCC Input Monitoring records.
+    → Grant Codex or the actual host app in: System Settings > Privacy & Security > Input Monitoring
+    → Then re-run EXP-2 as non-root to test if TCC was the blocker.
+
+  Result JSON:
+{
+  "experiment": "EXP-4",
+  "timestamp": "2026-03-13T14:56:14.331533Z",
+  "euid": 501,
+  "is_root": false,
+  "macos_version": "26.3",
+  "macos_build": "25D125",
+  "tcc_db_readable": false,
+  "input_monitoring_entries": [],
+  "console_tcc_deny_lines": [],
+  "host_app_path": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app",
+  "host_app_name": "Python",
+  "client_candidates": [
+    "/Applications/Codex.app",
+    "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app",
+    "Codex",
+    "Python",
+    "codex",
+    "python",
+    "zsh"
+  ],
+  "process_chain": [
+    {
+      "pid": 29305,
+      "ppid": 29301,
+      "command": "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/Resources/Python.app/Contents/MacOS/Python"
+    },
+    {
+      "pid": 29301,
+      "ppid": 28127,
+      "command": "/bin/zsh"
+    },
+    {
+      "pid": 28127,
+      "ppid": 28084,
+      "command": "/Applications/Codex.app/Contents/Resources/codex"
+    },
+    {
+      "pid": 28084,
+      "ppid": 1,
+      "command": "/Applications/Codex.app/Contents/MacOS/Codex"
+    }
+  ],
+  "recommendations": [
+    "Cannot read TCC.db. Run with sudo or grant Full Disk Access to Terminal.",
+    "Grant Codex or the actual host app Input Monitoring, then re-run EXP-2 non-root."
+  ]
+}

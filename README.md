@@ -67,7 +67,9 @@ Evidence directory on the local machine:
 
 - `results/ab_group_B_20260313_223208/`
 
-These raw logs are intentionally kept in the local `results/` directory and are gitignored by default.
+Tracked snapshot inside the repository:
+
+- [evidence/tahoe_26_nonroot/B_group](/Users/shiyi/权限问题/evidence/tahoe_26_nonroot/B_group)
 
 Key results:
 
@@ -102,7 +104,9 @@ Evidence directory on the local machine:
 
 - `results/ab_group_A_20260313_225558/`
 
-These raw logs are intentionally kept in the local `results/` directory and are gitignored by default.
+Tracked snapshot inside the repository:
+
+- [evidence/tahoe_26_nonroot/A_group](/Users/shiyi/权限问题/evidence/tahoe_26_nonroot/A_group)
 
 Key results:
 
@@ -177,6 +181,14 @@ Current safe wording:
 
 - We can prove that `Input Monitoring` changes `IOHIDManager` behavior on Tahoe.
 - We cannot yet claim from `TCC.db` records alone exactly how Apple wires the policy internally.
+
+## Repository-Preserved Tahoe Evidence
+
+To make sure the confirmed Tahoe result stays in Git even though the full `results/` tree is gitignored, a curated raw-evidence snapshot is tracked here:
+
+- [evidence/tahoe_26_nonroot/SUMMARY.md](/Users/shiyi/权限问题/evidence/tahoe_26_nonroot/SUMMARY.md)
+- [evidence/tahoe_26_nonroot/A_group](/Users/shiyi/权限问题/evidence/tahoe_26_nonroot/A_group)
+- [evidence/tahoe_26_nonroot/B_group](/Users/shiyi/权限问题/evidence/tahoe_26_nonroot/B_group)
 
 ## How To Reproduce On Another Machine
 

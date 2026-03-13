@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════════
+  EXP-3: IOHIDDeviceOpen Mode Comparison
+  euid: 501 | is_root: no
+  macOS: 26.3 (25D125)
+═══════════════════════════════════════════════════════
+
+  Sensor    OpenMode                             IOReturn      Result
+  ------    --------                             --------      ------
+  accel     SERVICE_MATCH                        page=0xff00   transport=SPU
+  accel     kIOHIDOptionsTypeNone                0x00000000  ✓ SUCCESS
+  accel     kIOHIDOptionsTypeSeizeDevice         0x00000000  ✓ SUCCESS
+  gyro      SERVICE_MATCH                        page=0xff00   transport=SPU
+  gyro      kIOHIDOptionsTypeNone                0x00000000  ✓ SUCCESS
+  gyro      kIOHIDOptionsTypeSeizeDevice         0x00000000  ✓ SUCCESS
+
+  ─── INTERPRETATION ───
+  If None=SUCCESS + Seize=FAIL (non-root):
+    → Non-exclusive read works; only SeizeDevice needs root.
+    → Attack is viable without root.
+  If both FAIL (non-root):
+    → AppleSPUHIDDriver enforces root at kernel level.
+    → Root or entitlement required.
+  If both SUCCESS (non-root):
+    → Full unrestricted access. High severity finding.

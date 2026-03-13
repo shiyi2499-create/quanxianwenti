@@ -1,0 +1,21 @@
+  EXP-0: IOKit Device Discovery
+  euid: 501
+  is_root: False
+
+  IOHIDManagerOpen(kIOHIDOptionsTypeNone) returned: 0xe00002e2
+  FAIL: IOHIDManagerOpen returned error 0xe00002e2
+{
+  "experiment": "EXP-0",
+  "timestamp": "2026-03-13T14:56:14.642914Z",
+  "euid": 501,
+  "is_root": false,
+  "system": {
+    "macos_version": "26.3",
+    "macos_build": "25D125"
+  },
+  "devices_found": [],
+  "service_devices_found": [],
+  "spu_accel_found": false,
+  "spu_gyro_found": false,
+  "verdict": "FAIL_MANAGER_OPEN_0xe00002e2"
+}

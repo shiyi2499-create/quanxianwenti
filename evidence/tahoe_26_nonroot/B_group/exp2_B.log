@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════════
+  EXP-2: Native C IOKit HID PoC
+  euid: 501
+  is_root: false
+  macOS: 26.3 (25D125)
+═══════════════════════════════════════════════════════
+
+  IOHIDManagerOpen(None) = 0x00000000 ✓
+
+  Accelerometer (usage 3): FOUND
+    transport=SPU product=(null)
+  Gyroscope     (usage 9): FOUND
+    transport=SPU product=(null)
+
+━━━ Phase A: kIOHIDOptionsTypeNone (non-exclusive) ━━━
+  Trying IOHIDDeviceOpen(accel, kIOHIDOptionsTypeNone)...
+  ✓ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = kIOReturnSuccess (0x00000000)
+  Trying IOHIDDeviceOpen(gyro, kIOHIDOptionsTypeNone)...
+  ✓ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = kIOReturnSuccess (0x00000000)
+
+━━━ READING DATA (target: 200 samples) ━━━
+  [accel] sample #1: x=0.0046 y=0.0082 z=-1.0068
+  [gyro] sample #1: x=0.4272 y=-0.1221 z=0.0000
+  [accel] sample #2: x=0.0042 y=0.0083 z=-1.0067
+  [gyro] sample #2: x=0.3052 y=0.0610 z=-0.0610
+  [accel] sample #3: x=0.0039 y=0.0085 z=-1.0071
+  [gyro] sample #3: x=0.2441 y=0.0000 z=0.0610
+  [accel] sample #4: x=0.0036 y=0.0088 z=-1.0078
+  [gyro] sample #4: x=0.2441 y=0.0610 z=-0.1831
+  [accel] sample #5: x=0.0032 y=0.0091 z=-1.0081
+  [gyro] sample #5: x=0.3052 y=0.0000 z=0.0000
+  [accel] sample #50: x=0.0045 y=0.0070 z=-1.0073
+  [gyro] sample #50: x=0.3052 y=-0.1221 z=-0.1831
+  [accel] sample #100: x=0.0046 y=0.0084 z=-1.0074
+  [gyro] sample #100: x=0.2441 y=0.0000 z=0.0000
+
+  Accel callbacks: 100
+  Gyro callbacks:  100
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  euid:                501
+  accel found:         yes
+  accel open(None):    0x00000000 SUCCESS
+  accel samples:       100
+  gyro found:          yes
+  gyro open(None):     0x00000000 SUCCESS
+  gyro samples:        100
+
+  ★ CRITICAL FINDING: Non-root IMU read SUCCEEDED!
+    This means H1 is CONFIRMED: root is NOT required by the OS.
+═══════════════════════════════════════════════════════

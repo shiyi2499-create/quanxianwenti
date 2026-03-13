@@ -1,0 +1,54 @@
+  WARN: IOHIDManagerOpen failed, continuing with direct service path
+═══════════════════════════════════════════════════════
+  EXP-2: Native C IOKit HID PoC
+  euid: 501
+  is_root: false
+  macOS: 26.3 (25D125)
+═══════════════════════════════════════════════════════
+
+  IOHIDManagerOpen(None) = 0xe00002e2 ✗
+
+  Accelerometer (usage 3): FOUND
+    transport=SPU product=(null)
+  Gyroscope     (usage 9): FOUND
+    transport=SPU product=(null)
+
+━━━ Phase A: kIOHIDOptionsTypeNone (non-exclusive) ━━━
+  Trying IOHIDDeviceOpen(accel, kIOHIDOptionsTypeNone)...
+  ✓ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = kIOReturnSuccess (0x00000000)
+  Trying IOHIDDeviceOpen(gyro, kIOHIDOptionsTypeNone)...
+  ✓ IOHIDDeviceOpen(kIOHIDOptionsTypeNone) = kIOReturnSuccess (0x00000000)
+
+━━━ READING DATA (target: 200 samples) ━━━
+  [gyro] sample #1: x=0.3662 y=-0.0610 z=-0.1221
+  [accel] sample #1: x=0.0055 y=0.0084 z=-1.0072
+  [gyro] sample #2: x=0.4883 y=0.1221 z=-0.0610
+  [accel] sample #2: x=0.0055 y=0.0085 z=-1.0072
+  [gyro] sample #3: x=0.3662 y=0.1221 z=-0.1221
+  [accel] sample #3: x=0.0053 y=0.0082 z=-1.0069
+  [gyro] sample #4: x=0.3662 y=0.0000 z=-0.1831
+  [accel] sample #4: x=0.0047 y=0.0077 z=-1.0068
+  [gyro] sample #5: x=0.3052 y=0.0000 z=0.0000
+  [accel] sample #5: x=0.0038 y=0.0075 z=-1.0072
+  [gyro] sample #50: x=0.3662 y=-0.0610 z=-0.0610
+  [accel] sample #50: x=0.0048 y=0.0076 z=-1.0076
+  [gyro] sample #100: x=0.2441 y=-0.0610 z=-0.0610
+  [accel] sample #100: x=0.0045 y=0.0069 z=-1.0067
+
+  Accel callbacks: 100
+  Gyro callbacks:  100
+
+═══════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════
+  euid:                501
+  accel found:         yes
+  accel open(None):    0x00000000 SUCCESS
+  accel samples:       100
+  gyro found:          yes
+  gyro open(None):     0x00000000 SUCCESS
+  gyro samples:        100
+
+  ★ CRITICAL FINDING: Non-root IMU read SUCCEEDED!
+    This means H1 is CONFIRMED: root is NOT required by the OS.
+═══════════════════════════════════════════════════════

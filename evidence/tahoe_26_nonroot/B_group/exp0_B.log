@@ -1,0 +1,273 @@
+  EXP-0: IOKit Device Discovery
+  euid: 501
+  is_root: False
+
+  IOHIDManagerOpen(kIOHIDOptionsTypeNone) returned: 0x00000000
+  Found 13 device(s) on usage page 0xFF00
+    [0] page=0xff00 usage=95 product='Apple Internal Keyboard / Trackpad' transport='FIFO'
+    [1] page=0xff00 usage=13 product='Apple Internal Keyboard / Trackpad' transport='FIFO'
+    [2] page=0xff00 usage=9 product='None' transport='SPU' ← GYROSCOPE
+    [3] page=0xff00 usage=5 product='None' transport='SPU'
+    [4] page=0x0001 usage=6 product='Apple Internal Keyboard / Trackpad' transport='FIFO'
+    [5] page=0xff00 usage=72 product='BTM' transport='SPMI'
+    [6] page=0xff00 usage=11 product='Apple Internal Keyboard / Trackpad' transport='FIFO'
+    [7] page=0xff00 usage=4 product='None' transport='SPU'
+    [8] page=0xff00 usage=255 product='None' transport='SPU'
+    [9] page=0xff00 usage=15 product='Keyboard Backlight' transport='USB'
+    [10] page=0xff00 usage=3 product='Apple Internal Keyboard / Trackpad' transport='FIFO' ← ACCELEROMETER
+    [11] page=0x0001 usage=2 product='Apple Internal Keyboard / Trackpad' transport='FIFO'
+    [12] page=0xff00 usage=3 product='None' transport='SPU' ← ACCELEROMETER
+
+  Service-level AppleSPUHIDDevice enumeration:
+    [svc 0] page=0xff0c usage=5 product='None' transport='SPU'
+    [svc 1] page=0xff0c usage=1 product='None' transport='SPU'
+    [svc 2] page=0xff00 usage=255 product='None' transport='SPU'
+    [svc 3] page=0xff00 usage=3 product='None' transport='SPU'
+    [svc 4] page=0x0020 usage=138 product='None' transport='SPU'
+    [svc 5] page=0xff00 usage=9 product='None' transport='SPU'
+    [svc 6] page=0xff00 usage=4 product='None' transport='SPU'
+    [svc 7] page=0xff00 usage=5 product='None' transport='SPU'
+
+  ✓ FOUND AppleSPUHIDDevice (accel=True, gyro=True)
+
+  Result JSON:
+{
+  "experiment": "EXP-0",
+  "timestamp": "2026-03-13T14:32:23.751101Z",
+  "euid": 501,
+  "is_root": false,
+  "system": {
+    "macos_version": "26.3",
+    "macos_build": "25D125"
+  },
+  "devices_found": [
+    {
+      "index": 0,
+      "usage_page": "0xff00",
+      "usage": 95,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 1,
+      "usage_page": "0xff00",
+      "usage": 13,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 2,
+      "usage_page": "0xff00",
+      "usage": 9,
+      "product": null,
+      "transport": "SPU",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": null,
+      "transport_key": "Transport"
+    },
+    {
+      "index": 3,
+      "usage_page": "0xff00",
+      "usage": 5,
+      "product": null,
+      "transport": "SPU",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": null,
+      "transport_key": "Transport"
+    },
+    {
+      "index": 4,
+      "usage_page": "0x0001",
+      "usage": 6,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 5,
+      "usage_page": "0xff00",
+      "usage": 72,
+      "product": "BTM",
+      "transport": "SPMI",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 6,
+      "usage_page": "0xff00",
+      "usage": 11,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 7,
+      "usage_page": "0xff00",
+      "usage": 4,
+      "product": null,
+      "transport": "SPU",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": null,
+      "transport_key": "Transport"
+    },
+    {
+      "index": 8,
+      "usage_page": "0xff00",
+      "usage": 255,
+      "product": null,
+      "transport": "SPU",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": null,
+      "transport_key": "Transport"
+    },
+    {
+      "index": 9,
+      "usage_page": "0xff00",
+      "usage": 15,
+      "product": "Keyboard Backlight",
+      "transport": "USB",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 10,
+      "usage_page": "0xff00",
+      "usage": 3,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 11,
+      "usage_page": "0x0001",
+      "usage": 2,
+      "product": "Apple Internal Keyboard / Trackpad",
+      "transport": "FIFO",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": "Product",
+      "transport_key": "Transport"
+    },
+    {
+      "index": 12,
+      "usage_page": "0xff00",
+      "usage": 3,
+      "product": null,
+      "transport": "SPU",
+      "usage_page_key": "PrimaryUsagePage",
+      "usage_key": "PrimaryUsage",
+      "product_key": null,
+      "transport_key": "Transport"
+    }
+  ],
+  "service_devices_found": [
+    {
+      "primary_usage_page": 65292,
+      "primary_usage": 5,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": null,
+      "product_id": null,
+      "manufacturer": "Apple",
+      "serial_number": null
+    },
+    {
+      "primary_usage_page": 65292,
+      "primary_usage": 1,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": null,
+      "product_id": null,
+      "manufacturer": "Apple",
+      "serial_number": null
+    },
+    {
+      "primary_usage_page": 65280,
+      "primary_usage": 255,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": null,
+      "product_id": null,
+      "manufacturer": "Apple",
+      "serial_number": null
+    },
+    {
+      "primary_usage_page": 65280,
+      "primary_usage": 3,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": 1452,
+      "product_id": 33028,
+      "manufacturer": "Apple",
+      "serial_number": "e1e876c5a41f048d0709221b"
+    },
+    {
+      "primary_usage_page": 32,
+      "primary_usage": 138,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": 1452,
+      "product_id": 33028,
+      "manufacturer": "Apple",
+      "serial_number": ""
+    },
+    {
+      "primary_usage_page": 65280,
+      "primary_usage": 9,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": 1452,
+      "product_id": 33028,
+      "manufacturer": "Apple",
+      "serial_number": "e1e876c5a41f048d0709221b"
+    },
+    {
+      "primary_usage_page": 65280,
+      "primary_usage": 4,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": null,
+      "product_id": null,
+      "manufacturer": "Apple",
+      "serial_number": null
+    },
+    {
+      "primary_usage_page": 65280,
+      "primary_usage": 5,
+      "product": null,
+      "transport": "SPU",
+      "vendor_id": 1452,
+      "product_id": 33028,
+      "manufacturer": "Apple",
+      "serial_number": ""
+    }
+  ],
+  "spu_accel_found": true,
+  "spu_gyro_found": true,
+  "verdict": "SUCCESS_SPU_DISCOVERED"
+}
